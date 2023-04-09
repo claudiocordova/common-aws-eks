@@ -1,0 +1,310 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  EKS cluster (dedicated VPC: true, dedicated IAM: true) [created and managed by
+  eksctl]
+
+
+Parameters:
+  EnvType:
+    Description: Environment type.
+    Default: test
+    Type: String
+    AllowedValues:
+      - prod
+      - test
+    ConstraintDescription: must specify prod or test.
+Conditions:
+  CreateNATGateway: !Equals 
+    - !Ref EnvType
+    - prod
+
+
+
+
+
+Resources:
+      
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/InternetGateway'
+
+
+  #*****NAT Gateway**********************
+  NATGateway:
+    Type: 'AWS::EC2::NatGateway'
+    Condition: CreateNATGateway
+    Properties:
+      AllocationId: !GetAtt 
+        - NATIP
+        - AllocationId
+      SubnetId: !Ref SubnetPublicUSWEST2B
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/NATGateway'
+  NATIP:
+    Type: 'AWS::EC2::EIP'
+    Condition: CreateNATGateway
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/NATIP'
+  NATPrivateSubnetRouteUSWEST2A:
+    Type: 'AWS::EC2::Route'
+    Condition: CreateNATGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+      RouteTableId: !Ref PrivateRouteTableUSWEST2A
+  NATPrivateSubnetRouteUSWEST2B:
+    Type: 'AWS::EC2::Route'
+    Condition: CreateNATGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway      
+      RouteTableId: !Ref PrivateRouteTableUSWEST2B
+  NATPrivateSubnetRouteUSWEST2C:
+    Type: 'AWS::EC2::Route'
+    Condition: CreateNATGateway
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+      RouteTableId: !Ref PrivateRouteTableUSWEST2C
+   #****************************************************************
+
+
+
+
+
+
+
+  #******** Private Route Tables ***********************      
+  PrivateRouteTableUSWEST2A:
+    Type: 'AWS::EC2::RouteTable'
+    Condition: CreateNATGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/PrivateRouteTableUSWEST2A'
+      VpcId: !Ref VPC
+  PrivateRouteTableUSWEST2B:
+    Type: 'AWS::EC2::RouteTable'
+    Condition: CreateNATGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/PrivateRouteTableUSWEST2B'
+      VpcId: !Ref VPC
+  PrivateRouteTableUSWEST2C:
+    Type: 'AWS::EC2::RouteTable'
+    Condition: CreateNATGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/PrivateRouteTableUSWEST2C'
+      VpcId: !Ref VPC
+  #*********************************************** 
+
+
+
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/PublicRouteTable'
+      VpcId: !Ref VPC
+  PublicSubnetRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref PublicRouteTable
+    DependsOn:
+      - VPCGatewayAttachment
+
+
+      
+  RouteTableAssociationPrivateUSWEST2A:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      #RouteTableId: !Ref PrivateRouteTableUSWEST2A
+      RouteTableId: 
+        'Fn::If':
+          - CreateNATGateway
+          - !Ref PrivateRouteTableUSWEST2A
+          - !Ref PublicRouteTable
+      SubnetId: !Ref SubnetPrivateUSWEST2A
+  RouteTableAssociationPrivateUSWEST2B:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      #RouteTableId: !Ref PrivateRouteTableUSWEST2B
+      RouteTableId: 
+        'Fn::If':
+          - CreateNATGateway
+          - !Ref PrivateRouteTableUSWEST2B
+          - !Ref PublicRouteTable      
+      SubnetId: !Ref SubnetPrivateUSWEST2B
+  RouteTableAssociationPrivateUSWEST2C:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      #RouteTableId: !Ref PrivateRouteTableUSWEST2C
+      RouteTableId: 
+        'Fn::If':
+          - CreateNATGateway
+          - !Ref PrivateRouteTableUSWEST2C
+          - !Ref PublicRouteTable        
+      SubnetId: !Ref SubnetPrivateUSWEST2C
+
+
+
+  RouteTableAssociationPublicUSWEST2A:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref SubnetPublicUSWEST2A
+
+  RouteTableAssociationPublicUSWEST2B:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref SubnetPublicUSWEST2B
+      
+  RouteTableAssociationPublicUSWEST2C:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref SubnetPublicUSWEST2C
+
+
+  SubnetPrivateUSWEST2A:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-west-2a
+      CidrBlock: 192.168.160.0/19
+      Tags:
+        - Key: kubernetes.io/role/internal-elb
+          Value: '1'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/SubnetPrivateUSWEST2A'
+      VpcId: !Ref VPC
+
+  SubnetPrivateUSWEST2B:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-west-2b
+      CidrBlock: 192.168.96.0/19
+      Tags:
+        - Key: kubernetes.io/role/internal-elb
+          Value: '1'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/SubnetPrivateUSWEST2B'
+      VpcId: !Ref VPC
+
+  SubnetPrivateUSWEST2C:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-west-2c
+      CidrBlock: 192.168.128.0/19
+      Tags:
+        - Key: kubernetes.io/role/internal-elb
+          Value: '1'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/SubnetPrivateUSWEST2C'
+      VpcId: !Ref VPC
+
+  SubnetPublicUSWEST2A:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-west-2a
+      CidrBlock: 192.168.64.0/19
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: kubernetes.io/role/elb
+          Value: '1'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/SubnetPublicUSWEST2A'
+      VpcId: !Ref VPC
+
+  SubnetPublicUSWEST2B:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-west-2b
+      CidrBlock: 192.168.0.0/19
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: kubernetes.io/role/elb
+          Value: '1'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/SubnetPublicUSWEST2B'
+      VpcId: !Ref VPC
+
+  SubnetPublicUSWEST2C:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: us-west-2c
+      CidrBlock: 192.168.32.0/19
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: kubernetes.io/role/elb
+          Value: '1'
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/SubnetPublicUSWEST2C'
+      VpcId: !Ref VPC
+
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 192.168.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/VPC'
+
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+Outputs:
+  FeatureNATMode:
+    Value: Single
+
+  SubnetsPrivate:
+    Value: !Join 
+      - ','
+      - - !Ref SubnetPrivateUSWEST2B
+        - !Ref SubnetPrivateUSWEST2C
+        - !Ref SubnetPrivateUSWEST2A
+    Export:
+      Name: !Sub '${AWS::StackName}::SubnetsPrivate'
+  SubnetsPublic:
+    Value: !Join 
+      - ','
+      - - !Ref SubnetPublicUSWEST2B
+        - !Ref SubnetPublicUSWEST2C
+        - !Ref SubnetPublicUSWEST2A
+    Export:
+      Name: !Sub '${AWS::StackName}::SubnetsPublic'
+  SubnetsAll:
+    Value: !Join 
+      - ','
+      - - !Ref SubnetPublicUSWEST2B
+        - !Ref SubnetPublicUSWEST2C
+        - !Ref SubnetPublicUSWEST2A
+        - !Ref SubnetPrivateUSWEST2B
+        - !Ref SubnetPrivateUSWEST2C
+        - !Ref SubnetPrivateUSWEST2A        
+    Export:
+      Name: !Sub '${AWS::StackName}::SubnetsAll'      
+  VPC:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${AWS::StackName}::VPC'
+

@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: claudio-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: claudio
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claudio-deployment
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 2
+      maxSurge: 2
+  selector:
+    matchLabels:
+      app: claudio
+  template:
+    metadata:
+      labels:
+        app: claudio
+    spec:
+      #affinity:
+      #  podAntiAffinity:
+      #    requiredDuringSchedulingIgnoredDuringExecution:
+      #    - labelSelector:
+      #        matchExpressions:
+      #        - key: app
+      #          operator: In
+      #          values:
+      #          - claudio
+      #      topologyKey: "kubernetes.io/hostname" 
+      #nodeSelector:
+      #  disktype: ssd                   
+      containers:
+        - name: claudio
+          image: 361494667617.dkr.ecr.us-east-1.amazonaws.com/poker-analyzer-service-repository:0.0.1-SNAPSHOT
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: 8080

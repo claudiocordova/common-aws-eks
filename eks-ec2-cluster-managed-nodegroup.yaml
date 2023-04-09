@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'EKS Managed Nodes (SSH access: false) [created by eksctl]'
+Mappings:
+  ServicePrincipalPartitionMap:
+    aws:
+      EC2: ec2.amazonaws.com
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+    aws-cn:
+      EC2: ec2.amazonaws.com.cn
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+    aws-us-gov:
+      EC2: ec2.amazonaws.com
+      EKS: eks.amazonaws.com
+      EKSFargatePods: eks-fargate-pods.amazonaws.com
+Resources:
+  LaunchTemplate:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              Iops: 3000
+              Throughput: 125
+              VolumeSize: 80
+              VolumeType: gp3
+        MetadataOptions:
+          HttpPutResponseHopLimit: 2
+          HttpTokens: optional
+        SecurityGroupIds:
+          - !ImportValue 'eks-cluster-stack::ClusterSecurityGroupId'
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: eks-cluster-eks-cluster-managed-group-Node
+              - Key: alpha.eksctl.io/nodegroup-name
+                Value: eks-cluster-managed-group
+              - Key: alpha.eksctl.io/nodegroup-type
+                Value: managed
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: eks-cluster-eks-cluster-managed-group-Node
+              - Key: alpha.eksctl.io/nodegroup-name
+                Value: eks-cluster-managed-group
+              - Key: alpha.eksctl.io/nodegroup-type
+                Value: managed
+          - ResourceType: network-interface
+            Tags:
+              - Key: Name
+                Value: eks-cluster-eks-cluster-managed-group-Node
+              - Key: alpha.eksctl.io/nodegroup-name
+                Value: eks-cluster-managed-group
+              - Key: alpha.eksctl.io/nodegroup-type
+                Value: managed
+      LaunchTemplateName: !Sub '${AWS::StackName}'
+  ManagedNodeGroup:
+    Type: 'AWS::EKS::Nodegroup'
+    Properties:
+      AmiType: AL2_x86_64
+      ClusterName: eks-cluster
+      InstanceTypes:
+        - t3.micro
+      Labels:
+        alpha.eksctl.io/cluster-name: eks-cluster
+        alpha.eksctl.io/nodegroup-name: eks-cluster-managed-group
+      LaunchTemplate:
+        Id: !Ref LaunchTemplate
+      NodeRole: !GetAtt 
+        - NodeInstanceRole
+        - Arn
+      NodegroupName: eks-cluster-managed-group
+      ScalingConfig:
+        DesiredSize: 2
+        MaxSize: 2
+        MinSize: 2
+      Subnets: !Split 
+        - ','
+        - !ImportValue 'eks-vpc-stack::SubnetsPublic'
+      Tags:
+        alpha.eksctl.io/nodegroup-name: eks-cluster-managed-group
+        alpha.eksctl.io/nodegroup-type: managed
+  NodeInstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - !FindInMap 
+                  - ServicePrincipalPartitionMap
+                  - !Ref 'AWS::Partition'
+                  - EC2
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/CloudWatchFullAccess'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AWSXrayFullAccess'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonS3FullAccess'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/SecretsManagerReadWrite'
+        - !Ref IAMManagedPolicy
+      Path: /
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/NodeInstanceRole'
+
+  IAMManagedPolicy:
+      Type: "AWS::IAM::ManagedPolicy"
+      Properties:
+          ManagedPolicyName: "eks_policy_to_access_kinesis_firehose2"
+          Path: "/"
+          PolicyDocument: |
+              {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Effect": "Allow",
+                          "Action": [
+                              "firehose:PutRecordBatch"
+                          ],
+                          "Resource": "*"
+                      },
+                      {
+                          "Effect": "Allow",
+                          "Action": "logs:PutLogEvents",
+                          "Resource": "arn:aws:logs:*:*:log-group:*:*:*"
+                      },
+                      {
+                          "Effect": "Allow",
+                          "Action": [
+                              "logs:CreateLogStream",
+                              "logs:DescribeLogStreams",
+                              "logs:PutLogEvents"
+                          ],
+                          "Resource": "arn:aws:logs:*:*:log-group:*"
+                      },
+                      {
+                          "Effect": "Allow",
+                          "Action": "logs:CreateLogGroup",
+                          "Resource": "*"
+                      }
+                  ]
+              }
+
+
+
