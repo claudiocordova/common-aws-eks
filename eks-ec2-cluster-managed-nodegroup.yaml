@@ -15,6 +15,7 @@ Mappings:
       EKS: eks.amazonaws.com
       EKSFargatePods: eks-fargate-pods.amazonaws.com
 Resources:
+
   LaunchTemplate:
     Type: 'AWS::EC2::LaunchTemplate'
     Properties:
@@ -57,13 +58,15 @@ Resources:
               - Key: alpha.eksctl.io/nodegroup-type
                 Value: managed
       LaunchTemplateName: !Sub '${AWS::StackName}'
+
+
   ManagedNodeGroup:
     Type: 'AWS::EKS::Nodegroup'
     Properties:
       AmiType: AL2_x86_64
       ClusterName: eks-cluster
       InstanceTypes:
-        - t3.micro
+        - t2.medium
       Labels:
         alpha.eksctl.io/cluster-name: eks-cluster
         alpha.eksctl.io/nodegroup-name: eks-cluster-managed-group
@@ -74,15 +77,18 @@ Resources:
         - Arn
       NodegroupName: eks-cluster-managed-group
       ScalingConfig:
-        DesiredSize: 2
-        MaxSize: 2
-        MinSize: 2
+        DesiredSize: 3
+        MaxSize: 3
+        MinSize: 3
       Subnets: !Split 
         - ','
         - !ImportValue 'eks-vpc-stack::SubnetsPublic'
       Tags:
         alpha.eksctl.io/nodegroup-name: eks-cluster-managed-group
         alpha.eksctl.io/nodegroup-type: managed
+        k8s.io/cluster-autoscaler/eks-cluster: owned
+        k8s.io/cluster-autoscaler/enabled: true
+
   NodeInstanceRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -107,16 +113,17 @@ Resources:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AWSXrayFullAccess'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonS3FullAccess'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/SecretsManagerReadWrite'
-        - !Ref IAMManagedPolicy
+        - !Ref AmazonEKSKinesisFirehosePolicy    
+        - !Ref AmazonEKSAutoScalerFeaturesPolicy   
       Path: /
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}/NodeInstanceRole'
 
-  IAMManagedPolicy:
+  AmazonEKSKinesisFirehosePolicy:
       Type: "AWS::IAM::ManagedPolicy"
       Properties:
-          ManagedPolicyName: "eks_policy_to_access_kinesis_firehose2"
+          ManagedPolicyName: "AmazonEKSKinesisFirehosePolicy"
           Path: "/"
           PolicyDocument: |
               {
@@ -151,5 +158,77 @@ Resources:
                   ]
               }
 
+  AmazonEKSAutoScalerFeaturesPolicy:
+      Type: "AWS::IAM::ManagedPolicy"
+      Properties:
+          ManagedPolicyName: "AmazonEKSAutoScalerFeaturesPolicy"
+          Path: "/"
+          PolicyDocument: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "autoscaling:DescribeAutoScalingGroups",
+                      "autoscaling:DescribeAutoScalingInstances",
+                      "autoscaling:DescribeLaunchConfigurations",
+                      "autoscaling:DescribeScalingActivities",
+                      "autoscaling:DescribeTags",
+                      "ec2:DescribeInstanceTypes",
+                      "ec2:DescribeLaunchTemplateVersions"
+                    ],
+                    "Resource": ["*"]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "autoscaling:SetDesiredCapacity",
+                      "autoscaling:TerminateInstanceInAutoScalingGroup",
+                      "ec2:DescribeImages",
+                      "ec2:GetInstanceTypesFromInstanceRequirements",
+                      "eks:DescribeNodegroup"
+                    ],
+                    "Resource": ["*"]
+                  }
+                ]
+              }
 
-
+  AmazonEKSClusterAutoscalerPolicy:
+      Type: "AWS::IAM::ManagedPolicy"
+      Properties:
+          ManagedPolicyName: "AmazonEKSClusterAutoscalerPolicy"
+          Path: "/"
+          PolicyDocument: |
+              {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Sid": "VisualEditor0",
+                          "Effect": "Allow",
+                          "Action": [
+                              "autoscaling:SetDesiredCapacity",
+                              "autoscaling:TerminateInstanceInAutoScalingGroup"
+                          ],
+                          "Resource": "*",
+                          "Condition": {
+                              "StringEquals": {
+                                  "aws:ResourceTag/k8s.io/cluster-autoscaler/eks-cluster": "owned"
+                              }
+                          }
+                      },
+                      {
+                          "Sid": "VisualEditor1",
+                          "Effect": "Allow",
+                          "Action": [
+                              "autoscaling:DescribeAutoScalingInstances",
+                              "autoscaling:DescribeAutoScalingGroups",
+                              "ec2:DescribeLaunchTemplateVersions",
+                              "autoscaling:DescribeTags",
+                              "autoscaling:DescribeLaunchConfigurations",
+                              "ec2:DescribeInstanceTypes"
+                          ],
+                          "Resource": "*"
+                      }
+                  ]
+              }

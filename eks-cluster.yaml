@@ -87,7 +87,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}/ControlPlane'
-      Version: '1.25'
+      Version: '1.26'
 
   ControlPlaneSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -113,6 +113,7 @@ Resources:
       PolicyName: !Sub '${AWS::StackName}-PolicyCloudWatchMetrics'
       Roles:
         - !Ref ServiceRole
+
   PolicyELBPermissions:
     Type: 'AWS::IAM::Policy'
     Properties:
@@ -150,6 +151,35 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}/ServiceRole'
+
+  FargatePodExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Condition:
+              ArnLike:
+                'aws:SourceArn': >-
+                  arn:aws:eks:us-west-2:361494667617:fargateprofile/eks-cluster/*
+            Effect: Allow
+            Principal:
+              Service:
+                - !FindInMap 
+                  - ServicePrincipalPartitionMap
+                  - !Ref 'AWS::Partition'
+                  - EKSFargatePods
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - !Sub >-
+          arn:${AWS::Partition}:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/FargatePodExecutionRole'
+
+
+
 
 
 Outputs:
@@ -190,4 +220,10 @@ Outputs:
       - ServiceRole
       - Arn
     Export:
-      Name: !Sub '${AWS::StackName}::ServiceRoleARN'                        
+      Name: !Sub '${AWS::StackName}::ServiceRoleARN'
+  FargatePodExecutionRoleARN:
+    Value: !GetAtt 
+      - FargatePodExecutionRole
+      - Arn
+    Export:
+      Name: !Sub '${AWS::StackName}::FargatePodExecutionRoleARN'                              

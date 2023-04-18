@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Fargate Profile
+
+Resources:
+  EKSFargateProfile:
+    #DependsOn: EKSIdpConfig
+    Type: 'AWS::EKS::FargateProfile'
+    Properties:
+      FargateProfileName: eks-fargate-profile
+      ClusterName: eks-cluster
+      PodExecutionRoleArn: !ImportValue 'eks-cluster-stack::FargatePodExecutionRoleARN'
+      Subnets: !Split 
+        - ','
+        - !ImportValue 'eks-vpc-stack::SubnetsPublic'
+      Selectors:
+        - Namespace: default
+          #Labels:
+          #  - Key: my-key
+          #    Value: my-value
+        - Namespace: claudio-namespace
+          #Labels:
+          #  - Key: my-key
+          #    Value: my-value
+        - Namespace: kube-system
+          #Labels:
+          #  - Key: my-key
+          #    Value: my-value                              
+
+
+   

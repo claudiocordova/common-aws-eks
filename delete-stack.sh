@@ -2,6 +2,17 @@
 
 REGION=$(aws configure get region)
 
+
+kubectl delete deployment metrics-server -n kube-system
+kubectl delete daemonset fluentd-cloudwatch -n amazon-cloudwatch
+
+
+kubectl delete deployment claudio-deployment -n claudio-namespace
+kubectl delete service claudio-service -n claudio-namespace
+kubectl delete hpa claudio-hap -n claudio-namespace
+
+
+
 aws cloudformation delete-stack --region $REGION --stack-name eks-cluster-managed-nodegroup-stack
 
 if [ $? -ne 0 ]; then
