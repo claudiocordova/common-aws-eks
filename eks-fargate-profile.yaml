@@ -6,12 +6,12 @@ Resources:
     #DependsOn: EKSIdpConfig
     Type: 'AWS::EKS::FargateProfile'
     Properties:
-      FargateProfileName: eks-fargate-profile
+      FargateProfileName: fargate-profile-eks
       ClusterName: eks-cluster
       PodExecutionRoleArn: !ImportValue 'eks-cluster-stack::FargatePodExecutionRoleARN'
       Subnets: !Split 
         - ','
-        - !ImportValue 'eks-vpc-stack::SubnetsPublic'
+        - !ImportValue 'eks-vpc-stack::SubnetsPrivate'
       Selectors:
         - Namespace: default
           #Labels:

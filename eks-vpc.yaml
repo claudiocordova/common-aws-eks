@@ -7,7 +7,7 @@ Description: >-
 Parameters:
   EnvType:
     Description: Environment type.
-    Default: test
+    Default: prod
     Type: String
     AllowedValues:
       - prod
@@ -191,6 +191,8 @@ Resources:
           Value: '1'
         - Key: Name
           Value: !Sub '${AWS::StackName}/SubnetPrivateUSWEST2A'
+        - Key: kubernetes.io/cluster/eks-cluster
+          Value: 'shared'          
       VpcId: !Ref VPC
 
   SubnetPrivateUSWEST2B:
@@ -203,6 +205,8 @@ Resources:
           Value: '1'
         - Key: Name
           Value: !Sub '${AWS::StackName}/SubnetPrivateUSWEST2B'
+        - Key: kubernetes.io/cluster/eks-cluster
+          Value: 'shared'          
       VpcId: !Ref VPC
 
   SubnetPrivateUSWEST2C:
@@ -215,6 +219,8 @@ Resources:
           Value: '1'
         - Key: Name
           Value: !Sub '${AWS::StackName}/SubnetPrivateUSWEST2C'
+        - Key: kubernetes.io/cluster/eks-cluster
+          Value: 'shared'
       VpcId: !Ref VPC
 
   SubnetPublicUSWEST2A:

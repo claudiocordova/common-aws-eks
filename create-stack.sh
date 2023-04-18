@@ -1,11 +1,25 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+    echo "Wrong parameter 1 MODE null"
+    exit 1 
+elif [ "$1" == "EKS_EC2" ]; then
+      MODE=$1
+elif [ "$1" == "EKS_FARGATE" ]; then
+      MODE=$1
+else
+    echo "Wrong parameter 1 MODE: "$1
+    exit 1 
+fi
+
+
+
 region=$(aws configure get region)
 
 #VPC
 #aws cloudformation create-stack --stack-name eks-vpc-stack --template-body file://./eks-vpc.yaml --capabilities CAPABILITY_NAMED_IAM
 
-aws cloudformation create-stack --region $region  --stack-name eks-cluster-stack --template-body file://./eks-ec2-cluster.yaml --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack --region $region  --stack-name eks-cluster-stack --template-body file://./eks-cluster.yaml --capabilities CAPABILITY_NAMED_IAM
 
 result=$?
 
