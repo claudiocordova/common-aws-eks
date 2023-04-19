@@ -2,19 +2,15 @@
 #https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html
 
 
-#fix coredns
 
-kubectl patch deployment coredns -n kube-system --type=json -p='[{"op": "remove", "path": "/spec/template/metadata/annotations", "value": "eks.amazonaws.com/compute-type"}]'
-
-kubectl rollout restart -n kube-system deployment coredns
 
 
 
 #****************************************************************************************************************
 #https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html
 #Creating an IAM OIDC provider for your cluster
-oidc_id=$(aws eks describe-cluster --name eks-cluster --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
-aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4=
+#oidc_id=$(aws eks describe-cluster --name eks-cluster --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
+#aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4=
 #if no output returned
 #Claudios-MBP:poker-hand-analyzer-microservice-springboot-aws-eks claudiocordova$ aws iam list-open-id-connect-providers | grep $oidc_id | cut -d "/" -f4=
 #cut: [-bcf] list: illegal list value
@@ -46,7 +42,6 @@ eksctl create iamserviceaccount \
 eksctl get iamserviceaccount --cluster eks-cluster --name aws-load-balancer-controller --namespace kube-system
 
 helm repo add eks https://aws.github.io/eks-charts
-
 helm repo update
 
 #https://repost.aws/knowledge-center/eks-alb-ingress-controller-fargate
@@ -59,13 +54,10 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.create=false \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set region=us-west-2 \
-  --set vpcId=vpc-0ff7822b29913281d 
+  --set vpcId=vpc-0438298fef5d7218a
 
 
 kubectl get deployment -n kube-system aws-load-balancer-controller
-
-
-
 
 #****************************************************************************************************************
 
@@ -77,7 +69,6 @@ kubectl apply -f app-with-nodeport-service-deployment.yaml
 
 
 kubectl get all -n claudio-namespace
-
 
 # Install ingress
 kubectl apply -f app-ingress.yaml

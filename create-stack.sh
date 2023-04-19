@@ -50,6 +50,12 @@ if [ "$MODE" == "EKS_FARGATE" ]; then
   fi
   aws cloudformation wait stack-create-complete --region $region --stack-name eks-fargate-profile-stack
 
+  ./fix-coredns-for-fargate.sh
+  ./install-app-with-nodeport-service-deployment.sh
+
+
+
+
 elif [ "$MODE" == "EKS_EC2" ]; then
   aws cloudformation create-stack --region $region --stack-name eks-cluster-managed-nodegroup-stack --template-body file://./eks-ec2-cluster-managed-nodegroup.yaml --capabilities CAPABILITY_NAMED_IAM
   result=$?
@@ -61,6 +67,14 @@ elif [ "$MODE" == "EKS_EC2" ]; then
     exit 1
   fi
   aws cloudformation wait stack-create-complete --region $region --stack-name eks-cluster-managed-nodegroup-stack 
+
+  # needs large nodegroup 
+  #./install-app-with-loadbalancer-service-deployment.sh
+  
+  # OR with ingress
+  ./install-app-with-nodeport-service-deployment.sh
+
+
 fi
 
 kubectl get all
