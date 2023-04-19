@@ -1,1 +1,1 @@
-# poker-hand-analyzer-microservice-springboot-aws-eks
+# common-aws-eks
