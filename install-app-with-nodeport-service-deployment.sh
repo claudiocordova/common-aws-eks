@@ -3,6 +3,15 @@
 
 
 
+#****************************************************************************************************************
+# Edit configmap with KubeCtlRole to AWS CodeBuild can access or edit manaully 
+# kubectl edit -n kube-system configmap/aws-auth
+
+ROLE="    - rolearn: arn:aws:iam::361494667617:role/KubeCtlRole\n      username: build\n      groups:\n        - system:masters"
+kubectl get -n kube-system configmap/aws-auth -o yaml | awk "/mapRoles: \|/{print;print \"$ROLE\";next}1" > /tmp/aws-auth-patch.yml
+kubectl patch configmap/aws-auth -n kube-system --patch "$(cat /tmp/aws-auth-patch.yml)"
+
+#****************************************************************************************************************
 
 
 
@@ -54,7 +63,7 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.create=false \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set region=us-west-2 \
-  --set vpcId=vpc-0438298fef5d7218a
+  --set vpcId=vpc-040672d20e7f42be7--- -- - - - 
 
 
 kubectl get deployment -n kube-system aws-load-balancer-controller

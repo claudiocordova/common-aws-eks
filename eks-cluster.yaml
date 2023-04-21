@@ -179,7 +179,33 @@ Resources:
           Value: !Sub '${AWS::StackName}/FargatePodExecutionRole'
 
 
+  KubeCtlRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+          Path: "/"
+          RoleName: "KubeCtlRole"
+          AssumeRolePolicyDocument: !Sub "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::${AWS::AccountId}:root\"},\"Action\":\"sts:AssumeRole\",\"Condition\":{}}]}"
+          MaxSessionDuration: 3600
+          ManagedPolicyArns: 
+            - !Ref KubeCtlPolicy
+          Description: ""
 
+  KubeCtlPolicy:
+      Type: "AWS::IAM::ManagedPolicy"
+      Properties:
+          ManagedPolicyName: "KubeCtlPolicy"
+          Path: "/"
+          PolicyDocument: |
+              {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                      {
+                          "Effect" :"Allow",
+                          "Action" : "eks:Describe*",
+                          "Resource" : "*"        
+                      }
+                  ]
+              }   
 
 
 Outputs:

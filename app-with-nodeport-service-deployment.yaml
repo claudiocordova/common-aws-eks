@@ -23,7 +23,7 @@ spec:
         app.kubernetes.io/name: claudio-container
     spec:
       containers:
-      - image: 361494667617.dkr.ecr.us-east-1.amazonaws.com/poker-analyzer-service-repository:0.0.1-SNAPSHOT
+      - image: 361494667617.dkr.ecr.us-west-2.amazonaws.com/poker-analyzer-service-repository:0.0.1-SNAPSHOT
         imagePullPolicy: Always
         name: claudio-container
         ports:
