@@ -5,7 +5,7 @@ REGION=$(aws configure get region)
 
 kubectl delete deployment metrics-server -n kube-system
 kubectl delete daemonset fluentd-cloudwatch -n amazon-cloudwatch
-kubectl delete ingress claudio-ingress -n claudio-namespace
+##kubectl delete ingress claudio-ingress -n claudio-namespace
 kubectl delete deployment claudio-deployment -n claudio-namespace
 kubectl delete service claudio-service -n claudio-namespace
 kubectl delete hpa claudio-hpa -n claudio-namespace
